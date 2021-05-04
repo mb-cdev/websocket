@@ -50,7 +50,6 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 	req, err := http.ReadRequest(bufio.NewReader(bytes.NewBuffer(reqBytes)))
 	if err != nil {
 		throw404HTTPError(c)
-		c.Close()
 		return
 	}
 
@@ -59,14 +58,12 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 	//or throw 404
 	if handler == nil {
 		throw404HTTPError(c)
-		c.Close()
 		return
 	}
 
 	defaultHandshakeResponse, err := NewHandshakeResponse(req)
 	if err != nil {
 		log.Default().Println("Error in handleConnection#2", err)
-		c.Close()
 		return
 	}
 
@@ -79,23 +76,18 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 	if ok := (*handler).ConfirmHandshake(req, defaultHandshakeResponse); !ok {
 		sendHTTPResponse(c, defaultHandshakeResponse)
 		log.Default().Println("Error in handleConnection#4", err)
-		c.Close()
 		return
 	}
+
+	confirmed := (*handler).ConfirmHandshake(req, defaultHandshakeResponse)
 	errResp := sendHTTPResponse(c, defaultHandshakeResponse)
 
 	if errResp != nil {
 		log.Default().Fatalln(errResp)
 	}
 
-	buff2 := make([]byte, 10)
-	for {
-		n, err := c.Read(buff2)
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-		fmt.Printf("%d %b\n", n, buff2)
+	if !confirmed {
+		return
 	}
 
 }
