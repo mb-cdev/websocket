@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 )
 
 type Handler interface {
@@ -26,9 +27,13 @@ func (w *WebSocketMux) Handle(pattern string, handle Handler) {
 	w.handlers[pattern] = handle
 }
 
-func (w *WebSocketMux) Dispatch(url *url.URL) *Handler {
-	if handler, ok := w.handlers[url.Path]; ok {
-		return &handler
+func (w *WebSocketMux) Dispatch(url *url.URL) Handler {
+	if h, ok := w.handlers[url.Path]; ok {
+
+		typ := reflect.TypeOf(h).Elem()
+		t := reflect.New(typ)
+
+		return t.Interface().(Handler)
 	}
 
 	return nil

@@ -32,7 +32,7 @@ func ListenAndServe(addr string, mux *WebSocketMux) {
 
 func handleConnection(c net.Conn, mux *WebSocketMux) {
 
-	defer c.Close()
+	//defer c.Close()
 
 	reqBytes := make([]byte, 0)
 	buff := make([]byte, 10)
@@ -54,9 +54,8 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 	}
 
 	//find handler
-	handler := mux.Dispatch(req.URL)
-	//or throw 404
-	if handler == nil {
+	hnd := mux.Dispatch(req.URL)
+	if hnd == nil {
 		throw404HTTPError(c)
 		return
 	}
@@ -73,23 +72,38 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 		return
 	}
 
-	if ok := (*handler).ConfirmHandshake(req, defaultHandshakeResponse); !ok {
-		sendHTTPResponse(c, defaultHandshakeResponse)
-		log.Default().Println("Error in handleConnection#4", err)
-		return
-	}
-
-	confirmed := (*handler).ConfirmHandshake(req, defaultHandshakeResponse)
 	errResp := sendHTTPResponse(c, defaultHandshakeResponse)
 
 	if errResp != nil {
 		log.Default().Fatalln(errResp)
 	}
 
-	if !confirmed {
-		return
-	}
+	in := make(chan string)
+	out := make(chan string)
 
+	go func(c net.Conn, in chan string, out chan string) {
+		for {
+			select {
+			case d := <-out:
+				c.Write([]byte(d))
+			default:
+				buff := make([]byte, 10)
+				n, err := c.Read(buff)
+
+				if err != nil {
+					return
+				}
+
+				if n > 0 {
+					in <- string(buff)
+				}
+			}
+		}
+	}(c, in, out)
+
+	go func(hnd Handler, in chan string, out chan string) {
+		hnd.ServeConnection(in, out)
+	}(hnd, in, out)
 }
 
 func sendHTTPResponse(c net.Conn, resp *http.Response) error {
