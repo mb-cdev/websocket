@@ -82,21 +82,25 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 	out := make(chan string)
 
 	go func(c net.Conn, in chan string, out chan string) {
+		readBuff := make([]byte, 0)
 		for {
 			select {
 			case d := <-out:
-				c.Write([]byte(d))
+				fmt.Println([]byte(d))
 			default:
+				c.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
 				buff := make([]byte, 10)
-				n, err := c.Read(buff)
-
-				if err != nil {
-					return
-				}
+				n, _ := c.Read(buff)
 
 				if n > 0 {
-					in <- string(buff)
+					readBuff = append(readBuff, buff...)
 				}
+
+				if n == 0 && len(readBuff) > 0 {
+					NewFrameFromBytes(readBuff)
+					readBuff = make([]byte, 0)
+				}
+
 			}
 		}
 	}(c, in, out)
