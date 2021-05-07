@@ -12,50 +12,33 @@ const (
 )
 
 type Frame struct {
-	FIN           bool
-	RSV1          bool
-	RSV2          bool
-	RSV3          bool
-	Opcode        uint8
-	Mask          bool
-	PayloadLength uint64
-	MaskingKey    [4]byte
-	PayloadData   []byte
+	FIN             bool
+	RSV1            bool
+	RSV2            bool
+	RSV3            bool
+	Opcode          Opcode
+	Mask            bool
+	PayloadLength7  uint8
+	PayloadLength64 uint64 // add payload length 126 or 127
+	MaskingKey      [4]byte
+	PayloadData     []byte
 }
 
-func NewFrameFromBytes(b []byte) Frame {
-	f := Frame{}
-
-	//First byte - FIN, RSV1,2,3, OPCODE
-	f.FIN = (b[0]&(1<<7) == 1<<7)
-	f.RSV1 = (b[0]&(1<<6) == 1<<6)
-	f.RSV2 = (b[0]&(1<<5) == 1<<5)
-	f.RSV3 = (b[0]&(1<<4) == 1<<4)
-	f.Opcode = (b[0] & 0xF)
-
-	//Second byte - isMask and Payload len
-	f.Mask = (b[1]&(1<<7) == 1<<7)
-
-	var payloadLength uint64 = uint64((b[1] & 0x7F))
-
-	if payloadLength == 126 {
-		payloadLength = 0
-		payloadLength = (uint64(b[2]) << 8)
-		payloadLength |= uint64(b[3])
-	}
-	if payloadLength == 127 {
-		payloadLength = 0
-
-		payloadLength |= (uint64(b[2]) << 56)
-		payloadLength |= (uint64(b[3]) << 48)
-		payloadLength |= (uint64(b[4]) << 40)
-		payloadLength |= (uint64(b[5]) << 32)
-		payloadLength |= (uint64(b[6]) << 24)
-		payloadLength |= (uint64(b[7]) << 16)
-		payloadLength |= (uint64(b[8]) << 8)
-		payloadLength |= uint64(b[9])
+func (f *Frame) getHeaderOffsetBytes() uint8 {
+	var offset uint8 = 2
+	if f.Mask {
+		offset += 4
 	}
 
-	f.PayloadLength = payloadLength
-	return f
+	if f.PayloadLength7 == 126 {
+		offset += 2
+	} else if f.PayloadLength7 == 127 {
+		offset += 8
+	}
+
+	return offset
+}
+
+func (f *Frame) getFrameLength() uint64 {
+	return uint64(f.getHeaderOffsetBytes()) + f.PayloadLength64
 }
