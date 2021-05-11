@@ -98,7 +98,7 @@ func (conn *webSocketConnection) throw404HTTPError() error {
 	if err != nil {
 		log.Default().Panic("Error in throwing 404", err, "\n")
 	}
-	errWrite := resp.Write(conn.c)
+	errWrite := conn.sendHTTPResponse(resp)
 
 	return errWrite
 }

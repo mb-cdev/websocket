@@ -1,14 +1,8 @@
 package websocket
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
 	"log"
 	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 func ListenAndServe(addr string, mux *WebSocketMux) {
@@ -20,7 +14,6 @@ func ListenAndServe(addr string, mux *WebSocketMux) {
 
 	for {
 		c, errAccept := l.Accept()
-		fmt.Println("Accepted")
 
 		if errAccept != nil {
 			log.Default().Fatal("Error in ListenAndServe#2", errAccept, "\n")
@@ -30,6 +23,7 @@ func ListenAndServe(addr string, mux *WebSocketMux) {
 	}
 }
 
+/*
 func handleConnection(c net.Conn, mux *WebSocketMux) {
 
 	//defer c.Close()
@@ -130,3 +124,4 @@ func throw404HTTPError(c net.Conn) error {
 
 	return errWrite
 }
+*/
