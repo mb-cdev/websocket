@@ -26,7 +26,7 @@ func ListenAndServe(addr string, mux *WebSocketMux) {
 			log.Default().Fatal("Error in ListenAndServe#2", errAccept, "\n")
 		}
 
-		go handleConnection(c, mux)
+		go handleWebSocketConnection(c, mux)
 	}
 }
 
@@ -60,7 +60,7 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 		return
 	}
 
-	defaultHandshakeResponse, err := NewHandshakeResponse(req)
+	defaultHandshakeResponse, err := newHandshakeResponse(req)
 	if err != nil {
 		log.Default().Println("Error in handleConnection#2", err)
 		return
@@ -97,7 +97,7 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 				}
 
 				if n == 0 && len(readBuff) > 0 {
-					fs := NewFramesFromBytes(readBuff)
+					fs := newFramesFromBytes(readBuff)
 
 					fmt.Println(len(fs.Bytes()))
 					readBuff = make([]byte, 0)

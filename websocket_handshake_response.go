@@ -12,7 +12,7 @@ import (
 
 const wsGUID string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-func NewHandshakeResponse(clientHandshakeRequest *http.Request) (*http.Response, error) {
+func newHandshakeResponse(clientHandshakeRequest *http.Request) (*http.Response, error) {
 	key, err := getWebSocketAcceptKey(clientHandshakeRequest)
 	var statusLine string
 

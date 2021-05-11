@@ -1,31 +1,31 @@
 package websocket
 
-type Opcode uint
+type opcode uint8
 
 const (
-	CONTINUATION_FRAME Opcode = 0x0
-	TEXT_FRAME         Opcode = 0x1
-	BINARY_FRAME       Opcode = 0x2
-	CONNECTION_CLOSE   Opcode = 0x8
-	PING               Opcode = 0x9
-	PONG               Opcode = 0xA
+	CONTINUATION_FRAME opcode = 0x0
+	TEXT_FRAME         opcode = 0x1
+	BINARY_FRAME       opcode = 0x2
+	CONNECTION_CLOSE   opcode = 0x8
+	PING               opcode = 0x9
+	PONG               opcode = 0xA
 )
 
-type Frame struct {
+type frame struct {
 	FIN             bool
 	RSV1            bool
 	RSV2            bool
 	RSV3            bool
-	Opcode          Opcode
+	Opcode          opcode
 	Mask            bool
 	PayloadLength7  uint8
-	PayloadLength64 uint64 // add payload length 126 or 127
+	PayloadLength64 uint64 // extendend payload length 126 or 127
 	MaskingKey      [4]byte
 	PayloadData     []byte
 	payloadUnmasked bool
 }
 
-func (f *Frame) getHeaderOffsetBytes() uint8 {
+func (f *frame) getHeaderOffsetBytes() uint8 {
 	var offset uint8 = 2
 	if f.Mask {
 		offset += 4
@@ -40,11 +40,11 @@ func (f *Frame) getHeaderOffsetBytes() uint8 {
 	return offset
 }
 
-func (f *Frame) getFrameLength() uint64 {
+func (f *frame) getFrameLength() uint64 {
 	return uint64(f.getHeaderOffsetBytes()) + f.PayloadLength64
 }
 
-func (f *Frame) UnmaskPayload() bool {
+func (f *frame) UnmaskPayload() bool {
 	if !f.Mask || f.payloadUnmasked || len(f.PayloadData) == 0 {
 		return false
 	}
@@ -57,10 +57,10 @@ func (f *Frame) UnmaskPayload() bool {
 	return true
 }
 
-func (f *Frame) IsPayloadUnmasked() bool {
+func (f *frame) IsPayloadUnmasked() bool {
 	return !f.Mask || (f.Mask && f.payloadUnmasked)
 }
 
-func (f *Frame) String() string {
+func (f *frame) String() string {
 	return string(f.PayloadData)
 }
