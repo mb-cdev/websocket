@@ -4,8 +4,8 @@ import (
 	"log"
 )
 
-func NewFrameFromBytes(b []byte) []Frame {
-	sf := []Frame{}
+func NewFramesFromBytes(b []byte) Frames {
+	sf := Frames{}
 
 	var offset uint64 = 0
 	for {
@@ -71,5 +71,26 @@ func createFrameFromBytes(b []byte) (Frame, uint64, error) {
 		log.Fatal("Not copied")
 	}
 
+	//unmask if masked
+	if f.Mask {
+		setMask(&f, b)
+	}
+
 	return f, f.getFrameLength(), nil
+}
+
+func setMask(f *Frame, b []byte) error {
+	//the mask is at end of frame header
+	//but before payload data
+
+	headerOffset := f.getHeaderOffsetBytes()
+	//mask is always 4 bytes len
+	maskStartIndex := headerOffset - 4
+
+	f.MaskingKey[0] = b[maskStartIndex]
+	f.MaskingKey[1] = b[maskStartIndex+1]
+	f.MaskingKey[2] = b[maskStartIndex+2]
+	f.MaskingKey[3] = b[maskStartIndex+3]
+
+	return nil
 }

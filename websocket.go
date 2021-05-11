@@ -97,9 +97,10 @@ func handleConnection(c net.Conn, mux *WebSocketMux) {
 				}
 
 				if n == 0 && len(readBuff) > 0 {
-					fs := NewFrameFromBytes(readBuff)
+					fs := NewFramesFromBytes(readBuff)
+
+					fmt.Println(len(fs.Bytes()))
 					readBuff = make([]byte, 0)
-					fmt.Printf("%#v", fs)
 				}
 
 			}

@@ -22,6 +22,7 @@ type Frame struct {
 	PayloadLength64 uint64 // add payload length 126 or 127
 	MaskingKey      [4]byte
 	PayloadData     []byte
+	payloadUnmasked bool
 }
 
 func (f *Frame) getHeaderOffsetBytes() uint8 {
@@ -41,4 +42,25 @@ func (f *Frame) getHeaderOffsetBytes() uint8 {
 
 func (f *Frame) getFrameLength() uint64 {
 	return uint64(f.getHeaderOffsetBytes()) + f.PayloadLength64
+}
+
+func (f *Frame) UnmaskPayload() bool {
+	if !f.Mask || f.payloadUnmasked || len(f.PayloadData) == 0 {
+		return false
+	}
+
+	for index := range f.PayloadData {
+		j := index % 4
+		f.PayloadData[index] = f.PayloadData[index] ^ f.MaskingKey[j]
+	}
+
+	return true
+}
+
+func (f *Frame) IsPayloadUnmasked() bool {
+	return !f.Mask || (f.Mask && f.payloadUnmasked)
+}
+
+func (f *Frame) String() string {
+	return string(f.PayloadData)
 }
