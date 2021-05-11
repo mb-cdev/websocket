@@ -19,7 +19,13 @@ func ListenAndServe(addr string, mux *WebSocketMux) {
 			log.Default().Fatal("Error in ListenAndServe#2", errAccept, "\n")
 		}
 
-		go handleWebSocketConnection(c, mux)
+		go func() {
+			err := handleWebSocketConnection(c, mux)
+			if err != nil {
+				log.Default().Println(err)
+				c.Close()
+			}
+		}()
 	}
 }
 
