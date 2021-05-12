@@ -9,7 +9,7 @@ import (
 
 type Handler interface {
 	ConfirmHandshake(clientHandshakeRequest *http.Request, serverHandshakeResponse *http.Response) bool
-	ServeConnection(inData chan string, outData chan string)
+	ServeConnection(inData chan string, outData chan string, disconnect chan bool)
 }
 
 type WebSocketMux struct {

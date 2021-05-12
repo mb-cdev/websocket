@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -52,43 +51,63 @@ func handleWebSocketConnection(c net.Conn, m *WebSocketMux) error {
 	}
 
 	//from client to server
-	in := make(chan string)
+	in := make(chan string, 10)
 	//from server to client
-	out := make(chan string)
+	out := make(chan string, 10)
 	//exit signal
-	exit := make(chan bool)
+	disconnect := make(chan bool, 1)
 
-	go func(in chan string, out chan string, exit chan bool, conn *webSocketConnection) {
+	go func(in chan string, out chan string, disconnect chan bool, conn *webSocketConnection) {
 		for {
 			select {
 			case o := <-out:
-				fmt.Println("OUT CALLED!", o)
-			case <-exit:
+				fs, err := newFramesFromPayloadString(o, false)
+				if err != nil {
+					log.Default().Println(err)
+				}
+				conn.sendFrames(fs)
+			case <-disconnect:
 				conn.close()
 				return
 			default:
-				conn.listenForNewFrames(in, exit)
+				conn.listenForNewFrames(in, disconnect)
 			}
 		}
-	}(in, out, exit, &conn)
+	}(in, out, disconnect, &conn)
 
 	//
-	go func(handler Handler, in chan string, out chan string, exit chan bool) {
-		defer func(exit chan bool) {
-			exit <- true
-		}(exit)
+	go func(handler Handler, in chan string, out chan string, disconnect chan bool) {
+		defer func(disconnect chan bool) {
+			disconnect <- true
+		}(disconnect)
 
-		handler.ServeConnection(in, out)
-	}(handler, in, out, exit)
+		handler.ServeConnection(in, out, disconnect)
+	}(handler, in, out, disconnect)
 
 	return nil
 }
 
-func (conn *webSocketConnection) listenForNewFrames(in chan string, exit chan bool) error {
+func (conn *webSocketConnection) sendFrames(fs *frames) (int, error) {
+	sent := 0
+	n := 0
+	var err error
+
+	for _, f := range fs.Frames {
+		n, err = conn.c.Write(f.Bytes())
+		sent += n
+		if err != nil {
+			break
+		}
+	}
+
+	return sent, err
+}
+
+func (conn *webSocketConnection) listenForNewFrames(in chan string, disconnect chan bool) error {
 	frameBytes := make([]byte, 0)
 	for {
 		buff := make([]byte, 1024)
-		conn.c.SetReadDeadline(time.Now().Add(time.Millisecond * 1))
+		conn.c.SetReadDeadline(time.Now().Add(time.Millisecond))
 
 		n, err := conn.c.Read(buff)
 
@@ -99,8 +118,8 @@ func (conn *webSocketConnection) listenForNewFrames(in chan string, exit chan bo
 		if n == 0 && len(frameBytes) > 0 {
 			fs := newFramesFromBytes(frameBytes)
 			if fs.HasCloseFrame {
-				exit <- true
-				return nil
+				disconnect <- true
+				break
 			}
 			in <- fs.String()
 		}
@@ -168,5 +187,7 @@ func (conn *webSocketConnection) sendHTTPResponse(resp *http.Response) error {
 }
 
 func (conn *webSocketConnection) close() {
+	fs, _ := newFramesClosingConnection()
+	conn.sendFrames(fs)
 	conn.c.Close()
 }
